@@ -1,0 +1,8 @@
+chargement image 1 :
+    parcourir image en x et en y :
+        regarder voisinage
+        calculer et écrire nouvelle valeur
+    enregistrer en ppm
+    garder l'image dans un tableau
+    recommencer avec l'image enregistrée
+
