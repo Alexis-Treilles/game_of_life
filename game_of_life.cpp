@@ -15,3 +15,8 @@ picture new_pic(int width , int height){
 
     return pic;
 }
+
+blzvkze
+sev
+vzsv
+dvzesv
