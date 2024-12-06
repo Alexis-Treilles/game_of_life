@@ -1,22 +1,49 @@
-picture new_pic(int width , int height){
-    picture pic;
-    
-    pic.width = width;
-    pic.height = height;
-    pic.pixels = (color*)malloc((pic.width*pic.height)*sizeof(color));
-    color white = {255, 255, 255}; // Définition de la couleur blanche
-    
-    for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height; y++) {
-            set_pixel(pic, x, y, white);
-            // Affecter la couleur blanche à chaque pixel de l'image
-        }
+#include <stdio.h>
+#include <stdlib.h>
+
+void open_img(const char *filename, char *image, int *width, int *height) {
+    FILE* img = fopen(filename, "r");
+    if (img == NULL) {
+        exit(EXIT_FAILURE);
     }
 
-    return pic;
+    // Lire le format (P1)
+    fgetc(img); // Ignorer 'P'
+    fgetc(img); // Ignorer '1'
+
+    // Lire les dimensions
+    fscanf(img, "%d %d", width, height);
+
+    image = (char*)calloc((*width) * (*height), sizeof(char));
+    if (image == NULL) {
+        fclose(img);
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < (*width) * (*height); i++) {
+        &(image)[i]=fgetc(img);
+    }
+
+    fclose(img);
 }
 
-blzvkze
-sev
-vzsv
-dvzesv
+void write_img(const char *filename, char *image, int width, int height) {
+    FILE* img=fopen(filename, "w");
+    fprintf(img, "P1 %d %d ", width, height);
+    for (int i = 0; i < height*width; i++) {
+            fputc(image[i], img);
+            fputc(' ', img);
+    }
+    fclose(img);
+}
+
+int main(int argc, char** argv) {
+    char* image;
+    int width, height;
+
+    open_img("image.ppm", image, &width, &height);
+    printf("Image loaded: width = %d, height = %d\n", width, height);
+    printf("%d\n", image[1]);
+    write_img("output.ppm", image, width, height);
+    return 0;
+}
