@@ -53,34 +53,22 @@ void write_img(const char *filename, unsigned char *image, int width, int height
 
 // Compter les voisins vivants
 int count_live_neighbors(unsigned char *current_image, int width, int height, int x, int y) {
-    int padded_width = width + 2;
-    int padded_height = height + 2;
+    int offsets[8][2] = {
+        {-1, -1}, {-1, 0}, {-1, 1},
+        { 0, -1},          { 0, 1},
+        { 1, -1}, { 1, 0}, { 1, 1}
+    };
 
-    // Créer une image "padded" avec des bordures de 0
-    unsigned char *padded_image = (unsigned char *)calloc(padded_width * padded_height, sizeof(unsigned char));
+    int live_neighbors = 0;
 
-    // Copier les données de l'image dans la partie centrale de l'image "padded"
-    for (int i = 0; i < height; i++) {
-        memcpy(&padded_image[(i + 1) * padded_width + 1], &current_image[i * width], width);
+    for (int i = 0; i < 8; i++) {
+        int nx = x + offsets[i][0];
+        int ny = y + offsets[i][1];
+
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            live_neighbors += current_image[ny * width + nx];
+        }
     }
-
-    // Indices de la cellule (x, y) dans l'image avec padding
-    int px = x + 1;
-    int py = y + 1;
-
-    // Somme des 8 voisins
-    int live_neighbors =
-        padded_image[(py - 1) * padded_width + (px - 1)] + // Haut-gauche
-        padded_image[(py - 1) * padded_width + px] +       // Haut
-        padded_image[(py - 1) * padded_width + (px + 1)] + // Haut-droite
-        padded_image[py * padded_width + (px - 1)] +       // Gauche
-        padded_image[py * padded_width + (px + 1)] +       // Droite
-        padded_image[(py + 1) * padded_width + (px - 1)] + // Bas-gauche
-        padded_image[(py + 1) * padded_width + px] +       // Bas
-        padded_image[(py + 1) * padded_width + (px + 1)];  // Bas-droite
-
-    // Libérer l'image padded
-    free(padded_image);
 
     return live_neighbors;
 }
