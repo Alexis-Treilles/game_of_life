@@ -8,25 +8,11 @@ Ouverture, écriture, exécution des regles du jeux sur 2 images.
 // Lire uniquement les dimensions de l'image
 void get_image_dimensions(const char *filename, int *width, int *height) {
     FILE *img = fopen(filename, "r");
-    if (!img) {
-        perror("Erreur à l'ouverture du fichier");
-        exit(EXIT_FAILURE);
-    }
-
     // Lire le format (P1)
     char format[3];
-    if (fgets(format, sizeof(format), img) == NULL || format[0] != 'P' || format[1] != '1') {
-        fprintf(stderr, "Format non valide\n");
-        fclose(img);
-        exit(EXIT_FAILURE);
-    }
-
+    fgets(format, sizeof(format), img);
     // Lire les dimensions
-    if (fscanf(img, "%d %d", width, height) != 2) {
-        fprintf(stderr, "Erreur lors de la lecture des dimensions\n");
-        fclose(img);
-        exit(EXIT_FAILURE);
-    }
+    fscanf(img, "%d %d", width, height);
 
     fclose(img);
 }
@@ -34,11 +20,6 @@ void get_image_dimensions(const char *filename, int *width, int *height) {
 // Lire les pixels de l'image
 void open_img(const char *filename, unsigned char *image, int width, int height) {
     FILE *img = fopen(filename, "r");
-    if (!img) {
-        perror("Erreur à l'ouverture du fichier");
-        exit(EXIT_FAILURE);
-    }
-
     // Ignorer le format et les dimensions
     char format[3];
     fgets(format, sizeof(format), img);
@@ -47,11 +28,7 @@ void open_img(const char *filename, unsigned char *image, int width, int height)
     // Lire les pixels
     for (int i = 0; i < width * height; i++) {
         int pixel;
-        if (fscanf(img, "%d", &pixel) != 1 || (pixel != 0 && pixel != 1)) {
-            fprintf(stderr, "Erreur : pixel invalide (%d) à l'indice %d\n", pixel, i);
-            fclose(img);
-            exit(EXIT_FAILURE);
-        }
+        fscanf(img, "%d", &pixel);
         image[i] = (unsigned char)pixel;
     }
 
@@ -61,24 +38,14 @@ void open_img(const char *filename, unsigned char *image, int width, int height)
 // Écrire les pixels dans un fichier
 void write_img(const char *filename, unsigned char *image, int width, int height) {
     FILE *img = fopen(filename, "w");
-    if (!img) {
-        perror("Erreur à l'ouverture du fichier pour l'écriture");
-        exit(EXIT_FAILURE);
-    }
-
     // Écrire l'en-tête
     fprintf(img, "P1\n%d %d\n", width, height);
 
     // Écrire les pixels
     for (int i = 0; i < width * height; i++) {
         fprintf(img, "%d", image[i]);
-        if ((i + 1) % width == 0) {
-            fprintf(img, "\n");
-        } else {
-            fprintf(img, " ");
-        }
+        fprintf(img, "\n");
     }
-
     fclose(img);
 }
 

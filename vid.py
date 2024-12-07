@@ -4,7 +4,7 @@ import cv2
 # Répertoire contenant les frames
 frames_dir = "images"  # Chemin vers le répertoire contenant les frames
 output_video = "game_of_life.mp4"  # Nom du fichier vidéo à générer
-fps = 10  # Fréquence d'images par seconde
+fps = 60  # Fréquence d'images par seconde
 
 # Vérifier si le répertoire existe
 if not os.path.exists(frames_dir):
