@@ -19,8 +19,19 @@ void open_img(const char *filename, unsigned char **image, int *width, int *heig
 
     // Lire le format et les dimensions
     char format[3];
-    fgets(format, sizeof(format), img);
-    fscanf(img, "%d %d", width, height);
+    if (fgets(format, sizeof(format), img) == NULL) 
+    {
+        perror("Erreur lors de la lecture du format");
+        fclose(img);
+        exit(EXIT_FAILURE);
+    }
+
+    if (fscanf(img, "%d %d", width, height) != 2) 
+    {
+        perror("Erreur lors de la lecture des dimensions");
+        fclose(img);
+        exit(EXIT_FAILURE);
+    }
 
     int new_width = *width + 2;  // Nouvelle largeur avec la bordure
     int new_height = *height + 2; // Nouvelle hauteur avec la bordure
@@ -37,7 +48,12 @@ void open_img(const char *filename, unsigned char **image, int *width, int *heig
     for (int y = 1; y <= *height; y++) {
         for (int x = 1; x <= *width; x++) {
             int pixel;
-            fscanf(img, "%d", &pixel);
+            if(fscanf(img, "%d", &pixel) != 1)
+            {
+                perror("Erreur lors de la lecture des dimensions");
+                fclose(img);
+                exit(EXIT_FAILURE);
+            }
             (*image)[y * new_width + x] = (unsigned char)pixel;
         }
     }
@@ -75,6 +91,7 @@ void write_img(const char *filename, unsigned char *image, int width, int height
         buffer[buffer_index++] = ' ';                 // Espace
     }
 
+
     // Écrire le buffer entier en une seule fois
     fwrite(buffer, 1, buffer_index, img);
 
@@ -88,7 +105,7 @@ void write_img(const char *filename, unsigned char *image, int width, int height
 // Appliquer les règles du Jeu de la Vie
 void apply_game_of_life(unsigned char *current_image, unsigned char *new_image, int width, int height) {
     int padded_width = width + 2; // Largeur totale avec les bordures
-    #pragma omp parallel for schedule(static) collapse(1)
+    //#pragma omp parallel for schedule(static) collapse(1) change rien
     for (int index = 0; index < width * height; index++) {
         // Convertir l'index 1D en coordonnées 2D dans la zone centrale
         int x = (index % width) + 1;  // Décalage pour correspondre à la zone centrale
@@ -130,7 +147,12 @@ int main() {
     int width, height;
 
     // Créer le répertoire pour stocker les images
-    system("mkdir -p ../images");
+    if (system("mkdir -p ../images") != 0) 
+    {
+        perror("Erreur lors de la création du répertoire");
+        return EXIT_FAILURE;
+    }
+
 
     // Allouer la mémoire pour les images
     unsigned char *current_image=NULL;
