@@ -3,36 +3,36 @@
 #include <time.h>
 #include <string.h>
 #include <omp.h>
+
+#define iterations 10
 /*
 
 Ouverture, écriture, exécution des regles du jeux sur 2 images.
 
 */
-// Lire uniquement les dimensions de l'image
-void get_image_dimensions(const char *filename, int *width, int *height) {
-    FILE *img = fopen(filename, "r");
-    // Lire le format (P1)
-    char format[3];
-    fgets(format, sizeof(format), img);
-    // Lire les dimensions
-    fscanf(img, "%d %d", width, height);
-
-    fclose(img);
-}
 
 // Lire les pixels de l'image
-void open_img(const char *filename, unsigned char *image, int width, int height) {
+void open_img(const char *filename, unsigned char **image, int *width, int *height) {
     FILE *img = fopen(filename, "r");
+    if (!img) {
+        perror("Erreur d'ouverture du fichier");
+        exit(EXIT_FAILURE);
+    }
+
     // Ignorer le format et les dimensions
     char format[3];
     fgets(format, sizeof(format), img);
-    fscanf(img, "%d %d", &width, &height);
+    fscanf(img, "%d %d", width, height);
+
+    int dim = *width * *height;
+
+    *image = (unsigned char *)calloc(dim, sizeof(unsigned char));
 
     // Lire les pixels
-    for (int i = 0; i < width * height; i++) {
+    for (int i = 0; i < dim; i++) {
         int pixel;
         fscanf(img, "%d", &pixel);
-        image[i] = (unsigned char)pixel;
+        (*image)[i] = (unsigned char)pixel;
     }
 
     fclose(img);
@@ -108,20 +108,15 @@ void apply_game_of_life(unsigned char *current_image, unsigned char *new_image, 
 // Main
 int main() {
     int width, height;
-    int iterations = 1000;
 
     // Créer le répertoire pour stocker les images
     system("mkdir -p images");
 
-    // Obtenir les dimensions de l'image
-    get_image_dimensions("image_init.ppm", &width, &height);
-
     // Allouer la mémoire pour les images
-    unsigned char *current_image = (unsigned char *)calloc(width * height, sizeof(unsigned char));
-    unsigned char *new_image = (unsigned char *)calloc(width * height, sizeof(unsigned char));
+    unsigned char *current_image=NULL;
 
     // Charger l'image initiale
-    open_img("image_init.ppm", current_image, width, height);
+    open_img("image_init.ppm", &current_image, &width, &height);
 
     printf("Image loaded: width = %d, height = %d\n", width, height);
 
@@ -129,7 +124,8 @@ int main() {
     char filename[256];
     snprintf(filename, sizeof(filename), "images/frame_0000.ppm");
     write_img(filename, current_image, width, height);
-
+    
+    unsigned char *new_image = (unsigned char *)calloc(width * height, sizeof(unsigned char));
     // Mesurer le temps total
     clock_t start = clock();
 
