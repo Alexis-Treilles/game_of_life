@@ -4,14 +4,11 @@
 #include <string.h>
 #include <omp.h>
 
-#define iterations 10
+#define iterations 100
 /*
 
 Ouverture, écriture, exécution des regles du jeux sur 2 images.
-
 */
-
-// Lire les pixels de l'image
 void open_img(const char *filename, unsigned char **image, int *width, int *height) {
     FILE *img = fopen(filename, "r");
     if (!img) {
@@ -19,91 +16,90 @@ void open_img(const char *filename, unsigned char **image, int *width, int *heig
         exit(EXIT_FAILURE);
     }
 
-    // Ignorer le format et les dimensions
+    // Lire le format et les dimensions
     char format[3];
     fgets(format, sizeof(format), img);
     fscanf(img, "%d %d", width, height);
 
-    int dim = *width * *height;
+    int new_width = *width + 2;  // Nouvelle largeur avec la bordure
+    int new_height = *height + 2; // Nouvelle hauteur avec la bordure
 
-    *image = (unsigned char *)calloc(dim, sizeof(unsigned char));
+    // Allouer la mémoire pour l'image étendue avec la bordure
+    *image = (unsigned char *)calloc(new_width * new_height, sizeof(unsigned char));
+    if (!*image) {
+        perror("Erreur d'allocation mémoire");
+        fclose(img);
+        exit(EXIT_FAILURE);
+    }
 
-    // Lire les pixels
-    for (int i = 0; i < dim; i++) {
-        int pixel;
-        fscanf(img, "%d", &pixel);
-        (*image)[i] = (unsigned char)pixel;
+    // Lire les pixels et les insérer au centre de l'image étendue
+    for (int y = 1; y <= *height; y++) {
+        for (int x = 1; x <= *width; x++) {
+            int pixel;
+            fscanf(img, "%d", &pixel);
+            (*image)[y * new_width + x] = (unsigned char)pixel;
+        }
     }
 
     fclose(img);
 }
 
+
 // Écrire les pixels dans un fichier
 void write_img(const char *filename, unsigned char *image, int width, int height) {
     FILE *img = fopen(filename, "w");
     // Écrire l'en-tête
-    fprintf(img, "P1\n%d %d\n", width, height);
+    fprintf(img, "P1\n%d %d\n", width+2, height+2);
 
+    int dim = (width+2) * (height+2);
+    //printf("%d \n", dim);
     // Écrire les pixels
-    for (int i = 0; i < width * height; i++) {
+    for (int i = 0; i < dim; i++) {
         fprintf(img, "%d", image[i]);
         fprintf(img, " ");
     }
     fclose(img);
 }
 
-// Compter les voisins vivants
-int count_live_neighbors(unsigned char *current_image, int width, int height, int x, int y) {
-    int offsets[8][2] = {
-        {-1, -1}, {-1, 0}, {-1, 1},
-        { 0, -1},          { 0, 1},
-        { 1, -1}, { 1, 0}, { 1, 1}
-    };
-
-    int live_neighbors = 0;
-    for (int i = 0; i < 8; i++) {
-        int nx = x + offsets[i][0];
-        int ny = y + offsets[i][1];
-
-        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            live_neighbors += current_image[ny * width + nx];
-        }
-    }
-
-    return live_neighbors;
-}
-
-
 // Appliquer les règles du Jeu de la Vie
 void apply_game_of_life(unsigned char *current_image, unsigned char *new_image, int width, int height) {
-    //int cells_created = 0, cells_killed = 0;
-    #pragma omp parallel for collapse(2)
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int live_neighbors = count_live_neighbors(current_image, width, height, x, y);
-            int index = y * width + x;
+    int padded_width = width + 2; // Largeur totale avec les bordures
 
-            if (current_image[index] == 1) { // Cellule vivante
-                if (live_neighbors == 2 || live_neighbors == 3) {
-                    new_image[index] = 1; // Reste vivante
-                } else {
-                    new_image[index] = 0; // Meurt
-                    //cells_killed++;
-                }
-            } else { // Cellule morte
-                if (live_neighbors == 3) {
-                    new_image[index] = 1; // Devient vivante
-                    //cells_created++;
-                } else {
-                    new_image[index] = 0; // Reste morte
-                }
+    for (int index = 0; index < width * height; index++) {
+        // Convertir l'index 1D en coordonnées 2D dans la zone centrale
+        int x = (index % width) + 1;  // Décalage pour correspondre à la zone centrale
+        int y = (index / width) + 1;  // Décalage pour correspondre à la zone centrale
+
+        int live_neighbors = 0;
+
+        // Calcul des voisins vivants (en utilisant la largeur totale avec bordures)
+        live_neighbors += current_image[(y - 1) * padded_width + (x - 1)];
+        live_neighbors += current_image[(y - 1) * padded_width + x];
+        live_neighbors += current_image[(y - 1) * padded_width + (x + 1)];
+        live_neighbors += current_image[y * padded_width + (x - 1)];
+        live_neighbors += current_image[y * padded_width + (x + 1)];
+        live_neighbors += current_image[(y + 1) * padded_width + (x - 1)];
+        live_neighbors += current_image[(y + 1) * padded_width + x];
+        live_neighbors += current_image[(y + 1) * padded_width + (x + 1)];
+
+        // Application des règles du jeu de la vie
+        if (current_image[y * padded_width + x] == 1) { // Cellule vivante
+            if (live_neighbors == 2 || live_neighbors == 3) {
+                new_image[y * padded_width + x] = 1; // Reste vivante
+            } else {
+                new_image[y * padded_width + x] = 0; // Meurt
+            }
+        } else { // Cellule morte
+            if (live_neighbors == 3) {
+                new_image[y * padded_width + x] = 1; // Devient vivante
+            } else {
+                new_image[y * padded_width + x] = 0; // Reste morte
             }
         }
     }
-
-    //printf("Cells created: %d\n", cells_created);
-    //printf("Cells killed: %d\n", cells_killed);
 }
+
+
 
 // Main
 int main() {
@@ -116,16 +112,16 @@ int main() {
     unsigned char *current_image=NULL;
 
     // Charger l'image initiale
-    open_img("image_init.ppm", &current_image, &width, &height);
+    open_img("empty_image_1920x1080.pbm", &current_image, &width, &height);
 
     printf("Image loaded: width = %d, height = %d\n", width, height);
 
     // Sauvegarder la première image
     char filename[256];
-    snprintf(filename, sizeof(filename), "images/frame_0000.ppm");
+    snprintf(filename, sizeof(filename), "images/frame_0000.pbm");
     write_img(filename, current_image, width, height);
     
-    unsigned char *new_image = (unsigned char *)calloc(width * height, sizeof(unsigned char));
+    unsigned char *new_image = (unsigned char *)calloc((width+2) * (height+2), sizeof(unsigned char));
     // Mesurer le temps total
     clock_t start = clock();
 
@@ -134,7 +130,7 @@ int main() {
         apply_game_of_life(current_image, new_image, width, height);
 
         // Sauvegarder l'image générée
-        snprintf(filename, sizeof(filename), "images/frame_%04d.ppm", i);
+        snprintf(filename, sizeof(filename), "images/frame_%04d.pbm", i);
         write_img(filename, new_image, width, height);
 
         // Échanger les buffers
