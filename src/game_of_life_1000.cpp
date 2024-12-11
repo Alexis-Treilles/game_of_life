@@ -77,22 +77,15 @@ void write_img(const char *filename, unsigned char *image, int width, int height
     // Calculer la taille de l'image et allouer le buffer
     int dim = (width + 2) * (height + 2);
     char *buffer = (char *)malloc(dim * 2); // Chaque pixel + espace = 2 caractères
-    if (!buffer) {
-        perror("Erreur d'allocation mémoire pour le buffer");
-        fclose(img);
-        return;
-    }
 
     // Remplir le buffer avec les pixels
     int buffer_index = 0;
     //#pragma unroll 8
+    //#pragma omp parallel for
     for (int i = 0; i < dim; i++) {
         buffer[buffer_index++] = image[i] ? '1' : '0'; // Pixel
         buffer[buffer_index++] = ' ';                 // Espace
     }
-
-
-    // Écrire le buffer entier en une seule fois
     fwrite(buffer, 1, buffer_index, img);
 
     // Libérer le buffer et fermer le fichier
@@ -106,6 +99,7 @@ void write_img(const char *filename, unsigned char *image, int width, int height
 void apply_game_of_life(unsigned char *current_image, unsigned char *new_image, int width, int height) {
     int padded_width = width + 2; // Largeur totale avec les bordures
     //#pragma omp parallel for schedule(static) collapse(1) change rien
+    #pragma omp parallel for
     for (int index = 0; index < width * height; index++) {
         // Convertir l'index 1D en coordonnées 2D dans la zone centrale
         int x = (index % width) + 1;  // Décalage pour correspondre à la zone centrale
@@ -158,7 +152,7 @@ int main() {
     unsigned char *current_image=NULL;
 
     // Charger l'image initiale
-    open_img("../empty_image_1920x1080.pbm", &current_image, &width, &height);
+    open_img("../random_life_1920x1080.pbm", &current_image, &width, &height);
 
     printf("Image loaded: width = %d, height = %d\n", width, height);
 
@@ -168,9 +162,13 @@ int main() {
     write_img(filename, current_image, width, height);
     
     unsigned char *new_image = (unsigned char *)calloc((width+2) * (height+2), sizeof(unsigned char));
-    // Mesurer le temps total
-    clock_t start = clock();
-
+    // Mesurer le temps relative
+    clock_t start_rel = clock();
+    
+    //Mesure de temps absolue
+    timespec start_abs, end_abs;
+    clock_gettime(CLOCK_REALTIME, &start_abs);
+    
     // Appliquer les règles pour 1000 itérations
     for (int i = 1; i <= iterations; i++) {
         apply_game_of_life(current_image, new_image, width, height);
@@ -185,9 +183,17 @@ int main() {
         new_image = temp;
     }
 
-    clock_t end = clock();
-    double time_taken = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("Temps total pour %d itérations : %.2f secondes\n", iterations, time_taken);
+    clock_t end_rel = clock();
+    clock_gettime(CLOCK_REALTIME, &end_abs);
+    
+    double time_taken = (double)(end_rel - start_rel) / CLOCKS_PER_SEC;
+    double time_taken_abs = (end_abs.tv_sec - start_abs.tv_sec) + 
+                     (end_abs.tv_nsec - start_abs.tv_nsec) / 1e9;    
+    printf("start:%ld, stop:%ld, clock/s:%ld\n", start_rel, end_rel, CLOCKS_PER_SEC);
+    printf("Temps total relatif pour %d itérations : %.2f secondes\n", iterations, time_taken);
+    printf("Temps total absolu pour %d itérations : %.2f secondes\n", iterations, time_taken_abs);
+
+    
 
     // Libérer la mémoire
     free(current_image);
